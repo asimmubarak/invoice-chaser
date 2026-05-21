@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import invoices, clients, auth
+from app.routes import invoices, clients, auth, dashboard
 from app.services.reminder import generate_reminders
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -17,8 +17,8 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(clients.router, prefix="/clients", tags=["clients"])
 app.include_router(invoices.router, prefix="/invoices", tags=["invoices"])
+app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 
-# Background scheduler - runs reminder check every day at 9am
 scheduler = BackgroundScheduler()
 scheduler.add_job(generate_reminders, "cron", hour=9, minute=0)
 scheduler.start()
