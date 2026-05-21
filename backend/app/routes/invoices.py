@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from app.config import supabase
 from app.services.email import send_reminder_email
+from app.services.scanner import scan_invoice
 from datetime import date
 from typing import Optional
 
@@ -93,3 +94,23 @@ def send_reminder(reminder_id: str):
         return {"message": "Reminder sent successfully"}
     else:
         raise HTTPException(status_code=500, detail="Failed to send email")
+
+@router.post("/scan")
+async def scan_invoice_file(file: UploadFile = File(...)):
+    allowed_types = ["image/jpeg", "image/png", "image/jpg", "application/pdf"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only JPG, PNG and PDF files allowed")
+
+    file_bytes = await file.read()
+
+    if len(file_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Max 10MB.")
+
+    try:
+        extracted = scan_invoice(file_bytes, file.content_type)
+        return {
+            "message": "Invoice scanned successfully",
+            "extracted": extracted
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Scan failed: {str(e)}")
