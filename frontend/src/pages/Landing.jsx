@@ -129,4 +129,4 @@ const ghostBtn = {
   color: '#ccc',
   cursor: 'pointer',
   fontSize: '14px'
-}
+} 
