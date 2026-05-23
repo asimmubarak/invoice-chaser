@@ -17,7 +17,7 @@ export default function Login() {
         localStorage.setItem('user_id', res.data.user_id)
         localStorage.setItem('email', res.data.email)
         toast.success('Welcome back!')
-        navigate('/')
+        navigate('/app')
       } else {
         await signup(form)
         toast.success('Account created! Please log in.')

@@ -7,7 +7,7 @@ export default function Navbar() {
   const logout = () => {
     localStorage.removeItem('user_id')
     localStorage.removeItem('email')
-    navigate('/login')
+    navigate('/')
   }
 
   return (
@@ -25,7 +25,7 @@ export default function Navbar() {
       </span>
 
       <div style={{ display: 'flex', gap: '8px' }}>
-        <NavLink to="/" icon={<LayoutDashboard size={16} />} label="Dashboard" />
+        <NavLink to="/app" icon={<LayoutDashboard size={16} />} label="Dashboard" />
         <NavLink to="/invoices" icon={<FileText size={16} />} label="Invoices" />
         <NavLink to="/clients" icon={<Users size={16} />} label="Clients" />
         <NavLink to="/reminders" icon={<Bell size={16} />} label="Reminders" />
