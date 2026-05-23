@@ -8,31 +8,31 @@ export default function Landing() {
     <div style={{ background: '#13131f', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif' }}>
 
       {/* Navbar */}
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', borderBottom: '1px solid #2e2e3e' }}>
-        <span style={{ color: '#a78bfa', fontWeight: 700, fontSize: '20px' }}>Invoice Chaser</span>
-        <div style={{ display: 'flex', gap: '12px' }}>
+      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #2e2e3e', flexWrap: 'wrap', gap: '12px' }}>
+        <span style={{ color: '#a78bfa', fontWeight: 700, fontSize: '18px' }}>Invoice Chaser</span>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => navigate('/login')} style={ghostBtn}>Log in</button>
-          <button onClick={() => navigate('/login')} style={primaryBtn}>Start free trial</button>
+          <button onClick={() => navigate('/login')} style={primaryBtn}>Free trial</button>
         </div>
       </nav>
 
       {/* Hero */}
-      <div style={{ textAlign: 'center', padding: '80px 24px 60px' }}>
+      <div style={{ textAlign: 'center', padding: '60px 24px 40px' }}>
         <div style={{ display: 'inline-block', background: '#2e2e3e', color: '#a78bfa', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '24px' }}>
           Built for freelancers & small businesses
         </div>
-        <h1 style={{ fontSize: '52px', fontWeight: 700, margin: '0 0 20px', lineHeight: 1.15 }}>
+        <h1 style={{ fontSize: 'clamp(32px, 6vw, 52px)', fontWeight: 700, margin: '0 0 20px', lineHeight: 1.15 }}>
           Stop chasing clients.<br />
           <span style={{ color: '#a78bfa' }}>Let us do it for you.</span>
         </h1>
-        <p style={{ color: '#888', fontSize: '18px', maxWidth: '540px', margin: '0 auto 40px', lineHeight: 1.7 }}>
+        <p style={{ color: '#888', fontSize: 'clamp(15px, 2vw, 18px)', maxWidth: '540px', margin: '0 auto 40px', lineHeight: 1.7 }}>
           Invoice Chaser automatically detects overdue invoices and sends smart, human-sounding payment reminders — so you get paid without the awkward follow-up emails.
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button onClick={() => navigate('/login')} style={{ ...primaryBtn, fontSize: '16px', padding: '14px 32px' }}>
+          <button onClick={() => navigate('/login')} style={{ ...primaryBtn, fontSize: '15px', padding: '14px 28px' }}>
             Start free trial — no credit card
           </button>
-          <button onClick={() => navigate('/login')} style={{ ...ghostBtn, fontSize: '16px', padding: '14px 32px' }}>
+          <button onClick={() => navigate('/login')} style={{ ...ghostBtn, fontSize: '15px', padding: '14px 28px' }}>
             See how it works
           </button>
         </div>
@@ -41,7 +41,7 @@ export default function Landing() {
 
       {/* Pain points */}
       <div style={{ background: '#1a1a2e', padding: '60px 24px' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '28px', marginBottom: '8px' }}>Sound familiar?</h2>
+        <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 28px)', marginBottom: '8px' }}>Sound familiar?</h2>
         <p style={{ textAlign: 'center', color: '#888', marginBottom: '48px' }}>Every freelancer deals with this. You shouldn't have to.</p>
         <div style={{ display: 'flex', gap: '24px', maxWidth: '900px', margin: '0 auto', flexWrap: 'wrap', justifyContent: 'center' }}>
           {[
@@ -58,7 +58,7 @@ export default function Landing() {
 
       {/* Features */}
       <div style={{ padding: '80px 24px' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '28px', marginBottom: '48px' }}>Everything you need to get paid faster</h2>
+        <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 28px)', marginBottom: '48px' }}>Everything you need to get paid faster</h2>
         <div style={{ display: 'flex', gap: '24px', maxWidth: '900px', margin: '0 auto', flexWrap: 'wrap', justifyContent: 'center' }}>
           {[
             { icon: <Clock size={24} color="#a78bfa" />, title: 'Automatic overdue detection', desc: 'Checks your invoices daily and flags anything overdue. No manual tracking.' },
@@ -77,9 +77,9 @@ export default function Landing() {
 
       {/* Pricing */}
       <div style={{ background: '#1a1a2e', padding: '80px 24px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: '28px', marginBottom: '8px' }}>Simple pricing</h2>
+        <h2 style={{ fontSize: 'clamp(22px, 4vw, 28px)', marginBottom: '8px' }}>Simple pricing</h2>
         <p style={{ color: '#888', marginBottom: '48px' }}>One plan. Everything included.</p>
-        <div style={{ background: '#1e1e2e', border: '2px solid #a78bfa', borderRadius: '16px', padding: '40px', maxWidth: '380px', margin: '0 auto' }}>
+        <div style={{ background: '#1e1e2e', border: '2px solid #a78bfa', borderRadius: '16px', padding: '40px 24px', maxWidth: '380px', margin: '0 auto' }}>
           <div style={{ fontSize: '48px', fontWeight: 700, color: '#a78bfa' }}>$29</div>
           <div style={{ color: '#888', marginBottom: '32px' }}>per month</div>
           {[
@@ -102,7 +102,7 @@ export default function Landing() {
       </div>
 
       {/* Footer */}
-      <div style={{ textAlign: 'center', padding: '32px', borderTop: '1px solid #2e2e3e', color: '#555', fontSize: '13px' }}>
+      <div style={{ textAlign: 'center', padding: '32px 24px', borderTop: '1px solid #2e2e3e', color: '#555', fontSize: '13px' }}>
         © 2026 Invoice Chaser · Built for freelancers who deserve to get paid on time
       </div>
 
@@ -129,4 +129,4 @@ const ghostBtn = {
   color: '#ccc',
   cursor: 'pointer',
   fontSize: '14px'
-} 
+}
