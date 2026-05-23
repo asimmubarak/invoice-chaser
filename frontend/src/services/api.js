@@ -1,7 +1,9 @@
 import axios from 'axios'
 
 const API = axios.create({
-  baseURL: ''
+  baseURL: import.meta.env.PROD 
+    ? 'https://invoice-chaser-production.up.railway.app'
+    : ''
 })
 
 // Auth
