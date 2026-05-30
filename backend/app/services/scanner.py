@@ -10,15 +10,13 @@ def encode_bytes(data: bytes) -> str:
     return base64.b64encode(data).decode("utf-8")
 
 def pdf_to_image_bytes(pdf_bytes: bytes) -> bytes:
-    """Convert first page of PDF to PNG image bytes."""
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     page = doc[0]
-    mat = fitz.Matrix(2, 2)  # 2x zoom for better quality
+    mat = fitz.Matrix(2, 2)
     pix = page.get_pixmap(matrix=mat)
     return pix.tobytes("png")
 
 def scan_invoice(file_bytes: bytes, file_type: str) -> dict:
-    # Convert PDF to image first
     if file_type == "application/pdf":
         image_bytes = pdf_to_image_bytes(file_bytes)
         mime = "image/png"
@@ -28,17 +26,25 @@ def scan_invoice(file_bytes: bytes, file_type: str) -> dict:
 
     base64_image = encode_bytes(image_bytes)
 
-    prompt = """You are an invoice data extractor. Extract the following fields from this invoice and return ONLY a valid JSON object with no extra text:
+    prompt = """You are an expert invoice data extractor. Carefully read every part of this invoice image and extract the following fields.
+
+Return ONLY a valid JSON object with no extra text, no markdown, no explanation:
+
 {
-  "client_name": "full name or company name of who is being billed",
-  "client_email": "email of client if visible, otherwise null",
-  "amount": numeric amount as a number only no currency symbols,
-  "currency": "3 letter currency code e.g. USD PKR GBP EUR",
-  "due_date": "date in YYYY-MM-DD format, if not found use null",
-  "invoice_number": "invoice number or reference",
-  "notes": "brief description of service if visible otherwise null"
+  "client_name": "The full name or company name of WHO IS BEING BILLED (the customer/recipient, not the seller). Look for labels like 'Bill To', 'Client', 'Customer', 'To', 'Sold To'.",
+  "client_email": "Email address of the client being billed if visible, otherwise null",
+  "amount": "The TOTAL amount due as a number only — no currency symbols, no commas. Look for 'Total', 'Amount Due', 'Balance Due', 'Grand Total'.",
+  "currency": "The 3-letter ISO currency code. Detect from currency symbols: $ = USD, £ = GBP, € = EUR, ₹ = INR, ₨ or Rs = PKR. If you see PKR, USD, GBP etc written out, use that. Default to USD only if absolutely no currency indicator exists.",
+  "due_date": "Payment due date in YYYY-MM-DD format. Look for 'Due Date', 'Payment Due', 'Due By'. If not found, use null.",
+  "invoice_number": "The invoice reference number. Look for 'Invoice #', 'Invoice No', 'Inv #', 'Reference'.",
+  "notes": "Brief description of the service or product being invoiced if visible, otherwise null"
 }
-If any field is not found, use null. Return only the JSON, no explanation."""
+
+Important rules:
+- client_name must be the BUYER not the seller
+- currency must be detected from symbols or text on the invoice, never assume USD unless there is no other indicator
+- amount should be the final total, not subtotal
+- If a field truly cannot be found, use null"""
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -61,7 +67,6 @@ If any field is not found, use null. Return only the JSON, no explanation."""
 
     raw = response.choices[0].message.content.strip()
 
-    # Clean up markdown if model wraps response
     if raw.startswith("```"):
         parts = raw.split("```")
         raw = parts[1]
