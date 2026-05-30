@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getInvoices, getClients, createInvoice, markPaid, deleteInvoice, scanInvoice } from '../services/api'
+import { getInvoices, getClients, createClient, createInvoice, markPaid, deleteInvoice, scanInvoice } from '../services/api'
 import Navbar from '../components/Navbar'
 import toast from 'react-hot-toast'
 import { Upload, Plus, CheckCircle, Trash2 } from 'lucide-react'
@@ -16,6 +16,9 @@ export default function Invoices() {
   const [showForm, setShowForm] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [newClientName, setNewClientName] = useState('')
+  const [newClientEmail, setNewClientEmail] = useState('')
+  const [showNewClient, setShowNewClient] = useState(false)
   const userId = localStorage.getItem('user_id')
 
   const load = async () => {
@@ -39,18 +42,37 @@ export default function Invoices() {
       fd.append('file', file)
       const res = await scanInvoice(fd)
       const ext = res.data.extracted
-      // Find client by name if exists
+
+      // Try to match scanned name against existing clients
       const matched = clients.find(c =>
         c.name.toLowerCase() === (ext.client_name || '').toLowerCase()
       )
-      setForm({
-        client_id: matched?.id || '',
-        invoice_number: ext.invoice_number || '',
-        amount: ext.amount || '',
-        currency: ext.currency || 'PKR',
-        due_date: ext.due_date || '',
-        notes: ext.notes || ''
-      })
+
+      if (matched) {
+        setForm({
+          client_id: matched.id,
+          invoice_number: ext.invoice_number || '',
+          amount: ext.amount || '',
+          currency: ext.currency || 'PKR',
+          due_date: ext.due_date || '',
+          notes: ext.notes || ''
+        })
+        setShowNewClient(false)
+      } else {
+        // Client not found — show new client creation fields pre-filled
+        setForm({
+          client_id: '',
+          invoice_number: ext.invoice_number || '',
+          amount: ext.amount || '',
+          currency: ext.currency || 'PKR',
+          due_date: ext.due_date || '',
+          notes: ext.notes || ''
+        })
+        setNewClientName(ext.client_name || '')
+        setNewClientEmail(ext.client_email || '')
+        setShowNewClient(true)
+      }
+
       setShowForm(true)
       toast.success('Invoice scanned — please review and confirm')
     } catch {
@@ -61,14 +83,42 @@ export default function Invoices() {
   }
 
   const handleSubmit = async () => {
-    if (!form.client_id || !form.invoice_number || !form.amount || !form.due_date) {
+    let clientId = form.client_id
+
+    // If new client needs to be created first
+    if (showNewClient && !clientId) {
+      if (!newClientName) {
+        toast.error('Please enter client name')
+        return
+      }
+      try {
+        const res = await createClient({
+          name: newClientName,
+          email: newClientEmail || '',
+          phone: '',
+          company: ''
+        }, userId)
+        clientId = res.data[0].id
+        toast.success(`Client "${newClientName}" created`)
+        await load()
+      } catch {
+        toast.error('Failed to create client')
+        return
+      }
+    }
+
+    if (!clientId || !form.invoice_number || !form.amount || !form.due_date) {
       toast.error('Please fill in all required fields')
       return
     }
+
     try {
-      await createInvoice({ ...form, amount: parseFloat(form.amount) }, userId)
+      await createInvoice({ ...form, client_id: clientId, amount: parseFloat(form.amount) }, userId)
       toast.success('Invoice created!')
       setForm(emptyForm)
+      setNewClientName('')
+      setNewClientEmail('')
+      setShowNewClient(false)
       setShowForm(false)
       load()
     } catch {
@@ -108,7 +158,7 @@ export default function Invoices() {
               {scanning ? 'Scanning...' : <><Upload size={14} /> Scan invoice</>}
               <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleScan} style={{ display: 'none' }} />
             </label>
-            <button onClick={() => setShowForm(!showForm)} style={{ ...btnStyle, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button onClick={() => { setShowForm(!showForm); setShowNewClient(false) }} style={{ ...btnStyle, display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Plus size={14} /> Add manually
             </button>
           </div>
@@ -120,15 +170,45 @@ export default function Invoices() {
             <h3 style={{ color: '#fff', margin: '0 0 16px' }}>
               {scanning ? 'Reviewing scanned invoice' : 'New invoice'}
             </h3>
+
+            {/* New client section — shown when scanned client not found */}
+            {showNewClient && (
+              <div style={{ background: '#13131f', border: '1px solid #a78bfa', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                <p style={{ color: '#a78bfa', fontSize: '13px', margin: '0 0 12px' }}>
+                  New client detected — will be created automatically
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <input
+                    placeholder="Client name *"
+                    value={newClientName}
+                    onChange={e => setNewClientName(e.target.value)}
+                    style={inputStyle}
+                  />
+                  <input
+                    placeholder="Client email"
+                    value={newClientEmail}
+                    onChange={e => setNewClientEmail(e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Existing client dropdown — shown when not creating new */}
+            {!showNewClient && (
+              <div style={{ marginBottom: '12px' }}>
+                <select
+                  value={form.client_id}
+                  onChange={e => setForm({ ...form, client_id: e.target.value })}
+                  style={{ ...inputStyle, width: '100%' }}
+                >
+                  <option value="">Select client *</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <select
-                value={form.client_id}
-                onChange={e => setForm({ ...form, client_id: e.target.value })}
-                style={inputStyle}
-              >
-                <option value="">Select client *</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
               <input
                 placeholder="Invoice number *"
                 value={form.invoice_number}
@@ -147,7 +227,7 @@ export default function Invoices() {
                 onChange={e => setForm({ ...form, currency: e.target.value })}
                 style={inputStyle}
               >
-                {['PKR', 'USD', 'GBP', 'EUR', 'AED'].map(c => (
+                {['PKR', 'USD', 'GBP', 'EUR', 'AED', 'INR'].map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
@@ -162,12 +242,18 @@ export default function Invoices() {
                 placeholder="Notes"
                 value={form.notes}
                 onChange={e => setForm({ ...form, notes: e.target.value })}
-                style={inputStyle}
+                style={{ ...inputStyle, gridColumn: '1 / -1' }}
               />
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
               <button onClick={handleSubmit} style={btnStyle}>Save invoice</button>
-              <button onClick={() => { setShowForm(false); setForm(emptyForm) }} style={{ ...btnStyle, background: '#2e2e3e' }}>Cancel</button>
+              <button onClick={() => {
+                setShowForm(false)
+                setForm(emptyForm)
+                setNewClientName('')
+                setNewClientEmail('')
+                setShowNewClient(false)
+              }} style={{ ...btnStyle, background: '#2e2e3e' }}>Cancel</button>
             </div>
           </div>
         )}
