@@ -32,17 +32,17 @@ export default function Dashboard() {
         <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
           <StatCard
             label="Total owed"
-            value={`PKR ${summary.total_owed.toLocaleString()}`}
+            value={`$ ${summary.total_owed.toLocaleString()}`}
             color="#a78bfa"
           />
           <StatCard
             label="Overdue"
-            value={`PKR ${summary.total_overdue.toLocaleString()}`}
+            value={`$ ${summary.total_overdue.toLocaleString()}`}
             color="#f87171"
           />
           <StatCard
             label="Total paid"
-            value={`PKR ${summary.total_paid.toLocaleString()}`}
+            value={`$ ${summary.total_paid.toLocaleString()}`}
             color="#34d399"
           />
           <StatCard
