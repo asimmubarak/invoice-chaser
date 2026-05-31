@@ -22,7 +22,7 @@ export default function Reminders() {
   const runReminders = async () => {
     setRunning(true)
     try {
-      const res = await axios.post('/run-reminders')
+      const res = await axios.post('https://invoice-chaser-production.up.railway.app/run-reminders')
       const count = res.data.reminders_created
       if (count > 0) {
         toast.success(`${count} new reminder${count > 1 ? 's' : ''} generated`)
