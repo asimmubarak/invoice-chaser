@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { getReminders, approveReminder, cancelReminder, sendReminder } from '../services/api'
+import { approveReminder, cancelReminder, sendReminder } from '../services/api'
 import Navbar from '../components/Navbar'
 import toast from 'react-hot-toast'
 import { CheckCircle, XCircle, Send, RefreshCw } from 'lucide-react'
 import axios from 'axios'
+
+const API = 'https://invoice-chaser-production.up.railway.app'
 
 export default function Reminders() {
   const [pending, setPending] = useState([])
@@ -13,12 +15,17 @@ export default function Reminders() {
   const userId = localStorage.getItem('user_id')
 
   const load = async () => {
-    const [pendingRes, approvedRes] = await Promise.all([
-      axios.get(`/invoices/reminders?user_id=${userId}`),
-      axios.get(`https://invoice-chaser-production.up.railway.app/invoices/reminders-approved?user_id=${userId}`)
-    ])
-    setPending(pendingRes.data)
-    setApproved(approvedRes.data)
+    try {
+      const [pendingRes, approvedRes] = await Promise.all([
+        axios.get(`${API}/invoices/reminders?user_id=${userId}`),
+        axios.get(`${API}/invoices/reminders-approved?user_id=${userId}`)
+      ])
+      setPending(Array.isArray(pendingRes.data) ? pendingRes.data : [])
+      setApproved(Array.isArray(approvedRes.data) ? approvedRes.data : [])
+    } catch {
+      setPending([])
+      setApproved([])
+    }
     setLoading(false)
   }
 
@@ -27,7 +34,7 @@ export default function Reminders() {
   const runReminders = async () => {
     setRunning(true)
     try {
-      const res = await axios.post('https://invoice-chaser-production.up.railway.app/run-reminders')
+      const res = await axios.post(`${API}/run-reminders`)
       const count = res.data.reminders_created
       if (count > 0) {
         toast.success(`${count} new reminder${count > 1 ? 's' : ''} generated`)
@@ -53,9 +60,8 @@ export default function Reminders() {
 
   const handleSendNow = async (id) => {
     try {
-      // Approve first then send
       await approveReminder(id)
-      await sendReminder(id)
+      await axios.post(`${API}/invoices/reminders/${id}/send`)
       toast.success('Reminder sent!')
       load()
     } catch {
@@ -65,7 +71,7 @@ export default function Reminders() {
 
   const handleSendApproved = async (id) => {
     try {
-      await sendReminder(id)
+      await axios.post(`${API}/invoices/reminders/${id}/send`)
       toast.success('Reminder sent!')
       load()
     } catch {
@@ -84,7 +90,7 @@ export default function Reminders() {
   }
 
   const ReminderCard = ({ r, actions }) => (
-    <div key={r.id} style={cardStyle}>
+    <div style={cardStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ flex: 1 }}>
           <div style={{ color: '#fff', fontWeight: 600, marginBottom: '4px' }}>
