@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { getReminders, approveReminder, cancelReminder, sendReminder } from '../services/api'
 import Navbar from '../components/Navbar'
 import toast from 'react-hot-toast'
-import { CheckCircle, XCircle, Send } from 'lucide-react'
+import { CheckCircle, XCircle, Send, RefreshCw } from 'lucide-react'
+import axios from 'axios'
 
 export default function Reminders() {
   const [reminders, setReminders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [running, setRunning] = useState(false)
   const userId = localStorage.getItem('user_id')
 
   const load = async () => {
@@ -16,6 +18,23 @@ export default function Reminders() {
   }
 
   useEffect(() => { load() }, [])
+
+  const runReminders = async () => {
+    setRunning(true)
+    try {
+      const res = await axios.post('/run-reminders')
+      const count = res.data.reminders_created
+      if (count > 0) {
+        toast.success(`${count} new reminder${count > 1 ? 's' : ''} generated`)
+        load()
+      } else {
+        toast('No new reminders — all invoices are up to date', { icon: '✓' })
+      }
+    } catch {
+      toast.error('Failed to run reminder check')
+    }
+    setRunning(false)
+  }
 
   const handle = async (fn, id, msg) => {
     try {
@@ -31,14 +50,44 @@ export default function Reminders() {
     <div style={{ background: '#13131f', minHeight: '100vh' }}>
       <Navbar />
       <div style={{ padding: '32px', maxWidth: '1100px', margin: '0 auto' }}>
-        <h2 style={{ color: '#fff', marginBottom: '24px' }}>Reminders queue</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div>
+            <h2 style={{ color: '#fff', margin: '0 0 4px' }}>Reminders queue</h2>
+            <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>
+              Reminders auto-generate daily at 9am. Click below to check now.
+            </p>
+          </div>
+          <button
+            onClick={runReminders}
+            disabled={running}
+            style={{
+              background: '#a78bfa',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 16px',
+              color: '#fff',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: running ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              opacity: running ? 0.7 : 1
+            }}
+          >
+            <RefreshCw size={14} />
+            {running ? 'Checking...' : 'Check for reminders'}
+          </button>
+        </div>
 
         {loading ? (
           <p style={{ color: '#888' }}>Loading...</p>
         ) : reminders.length === 0 ? (
           <div style={{ ...cardStyle, textAlign: 'center', padding: '48px' }}>
-            <p style={{ color: '#888', fontSize: '14px' }}>No pending reminders 🎉</p>
-            <p style={{ color: '#555', fontSize: '13px' }}>Run the reminder engine to generate new ones.</p>
+            <p style={{ color: '#888', fontSize: '14px' }}>No pending reminders</p>
+            <p style={{ color: '#555', fontSize: '13px' }}>
+              Click "Check for reminders" to scan your overdue invoices.
+            </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
