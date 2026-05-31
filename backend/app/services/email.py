@@ -12,7 +12,8 @@ def send_reminder_email(to_email: str, to_name: str, message: str, invoice_numbe
             "text": message,
         }
         email = resend.Emails.send(params)
+        print(f"Email sent successfully: {email}")
         return True
     except Exception as e:
-        print(f"Email error: {e}")
-        return False
+        print(f"Email error details: {str(e)}")
+        raise Exception(str(e))

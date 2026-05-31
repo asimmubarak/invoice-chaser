@@ -95,14 +95,27 @@ def send_reminder(reminder_id: str):
         invoice_number=invoice_number
     )
 
-    if success:
+    try:
+        reminder = result.data[0]
+        client = reminder["invoices"]["clients"]
+        invoice_number = reminder["invoices"]["invoice_number"]
+
+        from app.services.email import send_reminder_email
+        send_reminder_email(
+            to_email=client["email"],
+            to_name=client["name"],
+            message=reminder["message"],
+            invoice_number=invoice_number
+        )
+
         supabase.table("reminders")\
             .update({"status": "sent", "sent_at": str(date.today())})\
             .eq("id", reminder_id)\
             .execute()
         return {"message": "Reminder sent successfully"}
-    else:
-        raise HTTPException(status_code=500, detail="Failed to send email")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/scan")
 async def scan_invoice_file(file: UploadFile = File(...)):
