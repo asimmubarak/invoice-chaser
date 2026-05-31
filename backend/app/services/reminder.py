@@ -45,39 +45,47 @@ def draft_reminder_message(invoice: dict, days: int) -> str:
             f"Regards"
         )
 
-def should_send_reminder(invoice_id: str, days: int) -> bool:
-    # Only remind at day 3, 10, 20 and every 10 days after
-    trigger_days = [3, 10, 20]
-    if days > 20 and days % 10 == 0:
-        trigger_days.append(days)
-
-    if days not in trigger_days:
-        return False
-
-    # Check if reminder already sent for this day
-    existing = supabase.table("reminders")\
-        .select("id")\
+def already_reminded_recently(invoice_id: str) -> bool:
+    result = supabase.table("reminders")\
+        .select("id, created_at")\
         .eq("invoice_id", invoice_id)\
-        .eq("reminder_day", days)\
+        .order("created_at", desc=True)\
+        .limit(1)\
         .execute()
 
-    return len(existing.data) == 0
+    if not result.data:
+        return False
+
+    last = result.data[0]["created_at"]
+    last_date = date.fromisoformat(last[:10])
+    days_since = (date.today() - last_date).days
+    return days_since < 10
 
 def generate_reminders():
     invoices = get_overdue_invoices()
     created = 0
+    debug = []
 
     for invoice in invoices:
         days = days_overdue(invoice["due_date"])
-        if should_send_reminder(invoice["id"], days):
-            message = draft_reminder_message(invoice, days)
-            supabase.table("reminders").insert({
-                "invoice_id": invoice["id"],
-                "user_id": invoice["user_id"],
-                "reminder_day": days,
-                "message": message,
-                "status": "pending"
-            }).execute()
-            created += 1
+        recently = already_reminded_recently(invoice["id"])
+        debug.append({
+            "invoice": invoice["invoice_number"],
+            "days_overdue": days,
+            "recently_reminded": recently
+        })
 
-    return {"reminders_created": created}
+        if recently:
+            continue
+
+        message = draft_reminder_message(invoice, days)
+        supabase.table("reminders").insert({
+            "invoice_id": invoice["id"],
+            "user_id": invoice["user_id"],
+            "reminder_day": days,
+            "message": message,
+            "status": "pending"
+        }).execute()
+        created += 1
+
+    return {"reminders_created": created, "debug": debug}
