@@ -48,6 +48,15 @@ def get_reminders(user_id: str):
         .execute()
     return result.data
 
+@router.get("/reminders-approved")
+def get_approved_reminders(user_id: str):
+    result = supabase.table("reminders")\
+        .select("*, invoices(invoice_number, amount, currency, due_date, clients(name, email))")\
+        .eq("user_id", user_id)\
+        .eq("status", "approved")\
+        .execute()
+    return result.data
+
 @router.patch("/reminders/{reminder_id}/approve")
 def approve_reminder(reminder_id: str):
     result = supabase.table("reminders")\
