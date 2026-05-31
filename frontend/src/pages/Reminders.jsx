@@ -1,150 +1,86 @@
-import { useEffect, useState } from 'react'
-import { getReminders, approveReminder, cancelReminder, sendReminder } from '../services/api'
-import Navbar from '../components/Navbar'
-import toast from 'react-hot-toast'
-import { CheckCircle, XCircle, Send, RefreshCw } from 'lucide-react'
-import axios from 'axios'
+from app.config import supabase
+from datetime import date
 
-export default function Reminders() {
-  const [reminders, setReminders] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [running, setRunning] = useState(false)
-  const userId = localStorage.getItem('user_id')
+def get_overdue_invoices():
+    today = str(date.today())
+    result = supabase.table("invoices")\
+        .select("*, clients(name, email)")\
+        .eq("status", "unpaid")\
+        .lt("due_date", today)\
+        .execute()
+    return result.data
 
-  const load = async () => {
-    const res = await getReminders(userId)
-    setReminders(res.data)
-    setLoading(false)
-  }
+def days_overdue(due_date_str: str) -> int:
+    due = date.fromisoformat(due_date_str)
+    return (date.today() - due).days
 
-  useEffect(() => { load() }, [])
+def draft_reminder_message(invoice: dict, days: int) -> str:
+    client_name = invoice["clients"]["name"]
+    amount = invoice["amount"]
+    currency = invoice["currency"]
+    invoice_number = invoice["invoice_number"]
 
-  const runReminders = async () => {
-    setRunning(true)
-    try {
-      const res = await axios.post('https://invoice-chaser-production.up.railway.app/run-reminders')
-      const count = res.data.reminders_created
-      if (count > 0) {
-        toast.success(`${count} new reminder${count > 1 ? 's' : ''} generated`)
-        load()
-      } else {
-        toast('No new reminders — all invoices are up to date', { icon: '✓' })
-      }
-    } catch {
-      toast.error('Failed to run reminder check')
-    }
-    setRunning(false)
-  }
+    if days <= 7:
+        return (
+            f"Hi {client_name},\n\n"
+            f"Just a friendly reminder that invoice {invoice_number} "
+            f"for {currency} {amount:,.0f} was due {days} day(s) ago.\n\n"
+            f"Please let us know if you have any questions.\n\n"
+            f"Thanks!"
+        )
+    elif days <= 21:
+        return (
+            f"Hi {client_name},\n\n"
+            f"This is a follow-up regarding invoice {invoice_number} "
+            f"for {currency} {amount:,.0f}, which is now {days} days overdue.\n\n"
+            f"Could you please arrange payment at your earliest convenience?\n\n"
+            f"Thanks!"
+        )
+    else:
+        return (
+            f"Hi {client_name},\n\n"
+            f"Invoice {invoice_number} for {currency} {amount:,.0f} "
+            f"is now {days} days overdue. This requires immediate attention.\n\n"
+            f"Please make payment today or contact us to discuss.\n\n"
+            f"Regards"
+        )
 
-  const handle = async (fn, id, msg) => {
-    try {
-      await fn(id)
-      toast.success(msg)
-      load()
-    } catch {
-      toast.error('Action failed')
-    }
-  }
+def already_reminded_recently(invoice_id: str) -> bool:
+    """Check if a reminder was created in the last 10 days."""
+    result = supabase.table("reminders")\
+        .select("id, created_at")\
+        .eq("invoice_id", invoice_id)\
+        .order("created_at", desc=True)\
+        .limit(1)\
+        .execute()
 
-  return (
-    <div style={{ background: '#13131f', minHeight: '100vh' }}>
-      <Navbar />
-      <div style={{ padding: '32px', maxWidth: '1100px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <div>
-            <h2 style={{ color: '#fff', margin: '0 0 4px' }}>Reminders queue</h2>
-            <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>
-              Reminders auto-generate daily at 9am. Click below to check now.
-            </p>
-          </div>
-          <button
-            onClick={runReminders}
-            disabled={running}
-            style={{
-              background: '#a78bfa',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 16px',
-              color: '#fff',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: running ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              opacity: running ? 0.7 : 1
-            }}
-          >
-            <RefreshCw size={14} />
-            {running ? 'Checking...' : 'Check for reminders'}
-          </button>
-        </div>
+    if not result.data:
+        return False
 
-        {loading ? (
-          <p style={{ color: '#888' }}>Loading...</p>
-        ) : reminders.length === 0 ? (
-          <div style={{ ...cardStyle, textAlign: 'center', padding: '48px' }}>
-            <p style={{ color: '#888', fontSize: '14px' }}>No pending reminders</p>
-            <p style={{ color: '#555', fontSize: '13px' }}>
-              Click "Check for reminders" to scan your overdue invoices.
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {reminders.map(r => (
-              <div key={r.id} style={cardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ color: '#fff', fontWeight: 600, marginBottom: '4px' }}>
-                      {r.invoices?.clients?.name} — {r.invoices?.invoice_number}
-                    </div>
-                    <div style={{ color: '#888', fontSize: '13px', marginBottom: '12px' }}>
-                      {r.invoices?.currency} {r.invoices?.amount?.toLocaleString()} · {r.reminder_day} days overdue
-                    </div>
-                    <div style={{
-                      background: '#13131f',
-                      border: '1px solid #2e2e3e',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      color: '#ccc',
-                      fontSize: '13px',
-                      lineHeight: '1.6',
-                      whiteSpace: 'pre-line',
-                      maxWidth: '600px'
-                    }}>
-                      {r.message}
-                    </div>
-                  </div>
+    last = result.data[0]["created_at"]
+    last_date = date.fromisoformat(last[:10])
+    days_since = (date.today() - last_date).days
+    return days_since < 10
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginLeft: '24px' }}>
-                    <button
-                      onClick={() => handle(approveReminder, r.id, 'Approved!')}
-                      style={{ ...actionBtn, background: '#064e3b', color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <CheckCircle size={14} /> Approve
-                    </button>
-                    <button
-                      onClick={() => handle(sendReminder, r.id, 'Sent!')}
-                      style={{ ...actionBtn, background: '#1e3a5f', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <Send size={14} /> Send now
-                    </button>
-                    <button
-                      onClick={() => handle(cancelReminder, r.id, 'Cancelled')}
-                      style={{ ...actionBtn, background: '#450a0a', color: '#f87171', display: 'flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <XCircle size={14} /> Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+def generate_reminders():
+    invoices = get_overdue_invoices()
+    created = 0
 
-const cardStyle = { background: '#1e1e2e', border: '1px solid #2e2e3e', borderRadius: '12px', padding: '24px' }
-const actionBtn = { border: 'none', borderRadius: '6px', padding: '8px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
+    for invoice in invoices:
+        days = days_overdue(invoice["due_date"])
+
+        # Skip if reminded in last 10 days
+        if already_reminded_recently(invoice["id"]):
+            continue
+
+        message = draft_reminder_message(invoice, days)
+        supabase.table("reminders").insert({
+            "invoice_id": invoice["id"],
+            "user_id": invoice["user_id"],
+            "reminder_day": days,
+            "message": message,
+            "status": "pending"
+        }).execute()
+        created += 1
+
+    return {"reminders_created": created}
